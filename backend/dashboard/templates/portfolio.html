@@ -5,7 +5,7 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8">
-  <title>Portfolio | Dashboard</title>
+  <title>{% if is_edit %}Modifier le projet{% else %}Portfolio | Dashboard{% endif %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="{% static 'assets/css/dashboard-theme.css' %}">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -81,37 +81,102 @@
   </aside>
   <main class="dashboard-main">
     <div class="dashboard-card">
-      <div class="dashboard-title">Ajouter un projet</div>
-      <div class="dashboard-desc">Remplissez les informations de votre projet pour l'ajouter à votre portfolio.</div>
+      <div class="dashboard-title">{% if is_edit %}Modifier le projet{% else %}Ajouter un projet{% endif %}</div>
+      <div class="dashboard-desc">{% if is_edit %}Modifiez les informations de votre projet.{% else %}Remplissez les informations de votre projet pour l'ajouter à votre portfolio.{% endif %}</div>
       <form id="portfolioForm" enctype="multipart/form-data">
         <input type="text" name="title" placeholder="Titre du projet" required>
         <input type="url" name="url" placeholder="Lien du projet (optionnel)">
         <textarea name="description" placeholder="Décrivez votre projet" required></textarea>
-        <input type="file" name="image" accept="image/*" required>
-      <button type="submit">Ajouter</button>
+        <input type="file" name="image" accept="image/*" {% if not is_edit %}required{% endif %}>
+        <div id="currentImage" style="display: none; margin: 10px 0;">
+          <p>Image actuelle:</p>
+          <img id="currentImageSrc" style="max-width: 200px; border-radius: 8px;">
+        </div>
+      <button type="submit">{% if is_edit %}Modifier{% else %}Ajouter{% endif %}</button>
         <div id="form-status"></div>
     </form>
     </div>
   </main>
   <script>
+    // Check if we're in edit mode
+    const isEditMode = {{ is_edit|yesno:"true,false" }};
+    const itemId = {{ item_id|default:"null" }};
+    
+    // Load existing data if in edit mode
+    if (isEditMode && itemId) {
+      loadPortfolioData(itemId);
+    }
+    
+    async function loadPortfolioData(id) {
+      try {
+        const response = await fetch(`{{ base_url }}/api/portfolio/edit/${id}/`);
+        const result = await response.json();
+        if (result.success && result.data) {
+          const data = result.data;
+          
+          // Pre-fill form fields
+          document.querySelector('input[name="title"]').value = data.title || '';
+          document.querySelector('input[name="url"]').value = data.url || '';
+          document.querySelector('textarea[name="description"]').value = data.description || '';
+          
+          // Show current image if exists
+          if (data.image) {
+            document.getElementById('currentImage').style.display = 'block';
+            document.getElementById('currentImageSrc').src = data.image;
+            document.querySelector('input[name="image"]').required = false;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load portfolio data:', err);
+      }
+    }
+
     document.getElementById('portfolioForm').addEventListener('submit', async function(e) {
           e.preventDefault();
       const form = e.target;
       const formData = new FormData(form);
       const statusDiv = document.getElementById('form-status');
       statusDiv.innerHTML = '';
+      
       try {
-        const response = await fetch('{{ base_url }}/api/portfolio/', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await response.json();
-        if (data.success) {
-          statusDiv.innerHTML = '<span style="color:green;">Projet ajouté avec succès !</span>';
+        let url = '{{ base_url }}/api/portfolio/';
+        let method = 'POST';
+        
+        if (isEditMode && itemId) {
+          url = `{{ base_url }}/api/portfolio/edit/${itemId}/`;
+          method = 'PUT';
+          
+          // For PUT requests with files, we need to use FormData
+          const response = await fetch(url, {
+            method: method,
+            body: formData,
+          });
+          
+          const data = await response.json();
+          if (data.success) {
+            statusDiv.innerHTML = '<span style="color:green;">Projet modifié avec succès !</span>';
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 1500);
+          } else if (data.errors) {
+            for (const [field, errors] of Object.entries(data.errors)) {
+              statusDiv.innerHTML += `<p style="color:red;">${errors.join('<br>')}</p>`;
+            }
+          }
+        } else {
+          // Original POST logic for creating new portfolio
+          const response = await fetch(url, {
+            method: method,
+            body: formData,
+          });
+          const data = await response.json();
+          if (data.success) {
+            statusDiv.innerHTML = '<span style="color:green;">Projet ajouté avec succès !</span>';
             form.reset();
-        } else if (data.errors) {
-          for (const [field, errors] of Object.entries(data.errors)) {
-            statusDiv.innerHTML += `<p style="color:red;">${errors.join('<br>')}</p>`;
+          } else if (data.errors) {
+            for (const [field, errors] of Object.entries(data.errors)) {
+              statusDiv.innerHTML += `<p style="color:red;">${errors.join('<br>')}</p>`;
+            }
           }
         }
       } catch (err) {

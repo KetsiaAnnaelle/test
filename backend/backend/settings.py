@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,12 +25,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-iw1xcrpq5&ok=fcic9g6c)*06i=r)uhz47liil24tg!ku-@!d)'
+SECRET_KEY = os.getenv('SECRET_KEY', 'django-insecure-iw1xcrpq5&ok=fcic9g6c)*06i=r)uhz47liil24tg!ku-@!d)')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
-ALLOWED_HOSTS = ['ketsy.pythonanywhere.com', '127.0.0.1', 'localhost',]
+ALLOWED_HOSTS = ['elketsy.pythonanywhere.com', '127.0.0.1', 'localhost', 'www.elketsy.pythonanywhere.com']
 
 
 # Application definition
@@ -108,22 +112,27 @@ AUTH_PASSWORD_VALIDATORS = [
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:5501",
     "http://localhost:5501",
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
+    "http://127.0.0.1:5502",
+    "http://localhost:5502",
+    "http://127.0.0.1:5503",
+    "http://localhost:5503",
+    "https://elketsy.pythonanywhere.com",
+    "http://elketsy.pythonanywhere.com",
 ]
 
 CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:5501",
     "http://localhost:5501",
-
-     "http://127.0.0.1:5500",
+    "http://127.0.0.1:5500",
     "http://localhost:5500",
-
-
-     "http://127.0.0.1:5502",
+    "http://127.0.0.1:5502",
     "http://localhost:5502",
-
-
-     "http://127.0.0.1:5503",
+    "http://127.0.0.1:5503",
     "http://localhost:5503",
+    "https://elketsy.pythonanywhere.com",
+    "http://elketsy.pythonanywhere.com",
 ]
 
 
@@ -142,8 +151,12 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'dashboard/static'),
+]
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -154,3 +167,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+# Add this for better static file handling
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True

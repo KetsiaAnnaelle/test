@@ -182,10 +182,16 @@ def api_edit_about(request, about_id):
     try:
         about = About.objects.get(id=about_id)
         if request.method == 'PUT':
-            # Parse PUT data
-            import json
-            data = json.loads(request.body)
-            form = AboutForm(data, request.FILES, instance=about)
+            # Handle both JSON and FormData for PUT requests
+            if request.content_type and 'multipart/form-data' in request.content_type:
+                # FormData (for file uploads)
+                form = AboutForm(request.POST, request.FILES, instance=about)
+            else:
+                # JSON data
+                import json
+                data = json.loads(request.body)
+                form = AboutForm(data, request.FILES, instance=about)
+            
             if form.is_valid():
                 form.save()
                 return JsonResponse({'success': True})
@@ -244,9 +250,16 @@ def api_edit_portfolio(request, portfolio_id):
     try:
         portfolio = Portfolio.objects.get(id=portfolio_id)
         if request.method == 'PUT':
-            import json
-            data = json.loads(request.body)
-            form = PortfolioForm(data, request.FILES, instance=portfolio)
+            # Handle both JSON and FormData for PUT requests
+            if request.content_type and 'multipart/form-data' in request.content_type:
+                # FormData (for file uploads)
+                form = PortfolioForm(request.POST, request.FILES, instance=portfolio)
+            else:
+                # JSON data
+                import json
+                data = json.loads(request.body)
+                form = PortfolioForm(data, request.FILES, instance=portfolio)
+            
             if form.is_valid():
                 form.save()
                 return JsonResponse({'success': True})

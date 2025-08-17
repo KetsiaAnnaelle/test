@@ -82,8 +82,8 @@
   </aside>
   <main class="dashboard-main">
     <div class="dashboard-card">
-      <div class="dashboard-title">Qualifications</div>
-      <div class="dashboard-desc">Ajoutez ou modifiez vos diplômes et formations pour les afficher sur votre site public.</div>
+      <div class="dashboard-title">{% if is_edit %}Modifier la qualification{% else %}Qualifications{% endif %}</div>
+      <div class="dashboard-desc">{% if is_edit %}Modifiez les informations de cette qualification.{% else %}Ajoutez ou modifiez vos diplômes et formations pour les afficher sur votre site public.{% endif %}</div>
       <form id="qualificationsForm">
         <select name="type">
           <option value="">Sélectionnez le type</option>
@@ -97,13 +97,40 @@
         <div class="input-error" id="error-institution"></div>
         <input type="text" name="year" placeholder="Année">
         <div class="input-error" id="error-year"></div>
-      <button type="submit">Ajouter</button>
+      <button type="submit">{% if is_edit %}Modifier{% else %}Ajouter{% endif %}</button>
         <div id="form-status"></div>
     </form>
     </div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.12/dist/sweetalert2.all.min.js"></script>
   <script>
+    // Check if we're in edit mode
+    const isEditMode = {{ is_edit|yesno:"true,false" }};
+    const itemId = {{ item_id|default:"null" }};
+    
+    // Load existing data if in edit mode
+    if (isEditMode && itemId) {
+      loadQualificationData(itemId);
+    }
+    
+    async function loadQualificationData(id) {
+      try {
+        const response = await fetch(`{{ base_url }}/api/qualifications/edit/${id}/`);
+        const result = await response.json();
+        if (result.success && result.data) {
+          const data = result.data;
+          
+          // Pre-fill form fields
+          document.querySelector('select[name="type"]').value = data.type || '';
+          document.querySelector('input[name="diploma"]').value = data.diploma || '';
+          document.querySelector('input[name="institution"]').value = data.institution || '';
+          document.querySelector('input[name="year"]').value = data.year || '';
+        }
+      } catch (err) {
+        console.error('Failed to load qualification data:', err);
+      }
+    }
+
     document.getElementById('qualificationsForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       // Clear all per-field errors
@@ -147,19 +174,77 @@
       const statusDiv = document.getElementById('form-status');
       statusDiv.innerHTML = '';
       try {
-        const response = await fetch('{{ base_url }}/api/qualifications/', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await response.json();
-        if (data.success) {
-          await Swal.fire({
-            icon: 'success',
-            title: 'Qualification ajoutée !',
-            confirmButtonText: 'OK',
+        let url = '{{ base_url }}/api/qualifications/';
+        let method = 'POST';
+        
+        if (isEditMode && itemId) {
+          url = `{{ base_url }}/api/qualifications/edit/${itemId}/`;
+          method = 'PUT';
+          
+          // Convert FormData to JSON for PUT request
+          const jsonData = {};
+          for (let [key, value] of formData.entries()) {
+            jsonData[key] = value;
+          }
+          
+          const response = await fetch(url, {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(jsonData),
           });
-          statusDiv.innerHTML = '<span style="color:green;">Qualification ajoutée !</span>';
-          form.reset();
+          
+          const data = await response.json();
+          if (data.success) {
+            await Swal.fire({
+              icon: 'success',
+              title: 'Qualification modifiée !',
+              confirmButtonText: 'OK',
+            });
+            statusDiv.innerHTML = '<span style="color:green;">Qualification modifiée !</span>';
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 1500);
+          } else if (data.errors) {
+            // Show server-side errors under each field if possible
+            for (const [field, errors] of Object.entries(data.errors)) {
+              const errorDiv = document.getElementById('error-' + field);
+              if (errorDiv) {
+                errorDiv.textContent = errors.join(', ');
+              }
+            }
+            // Also show SweetAlert for global/server errors
+            let errorList = '<ul class="form-error-list">';
+            for (const [field, errors] of Object.entries(data.errors)) {
+              errors.forEach(error => {
+                errorList += `<li><strong>${field}:</strong> ${error}</li>`;
+              });
+            }
+            errorList += '</ul>';
+            statusDiv.innerHTML = errorList;
+            Swal.fire({
+              icon: 'error',
+              title: 'Erreur',
+              html: errorList,
+              confirmButtonText: 'OK',
+            });
+          }
+        } else {
+          // Original POST logic for creating new qualification
+          const response = await fetch(url, {
+            method: method,
+            body: formData,
+          });
+          const data = await response.json();
+          if (data.success) {
+            await Swal.fire({
+              icon: 'success',
+              title: 'Qualification ajoutée !',
+              confirmButtonText: 'OK',
+            });
+            statusDiv.innerHTML = '<span style="color:green;">Qualification ajoutée !</span>';
+            form.reset();
         } else if (data.errors) {
           // Show server-side errors under each field if possible
           for (const [field, errors] of Object.entries(data.errors)) {

@@ -11,6 +11,7 @@ urlpatterns = [
     path('skills/', views.skills_view, name='skills'),
     path('skills/edit/<int:skill_id>/', views.edit_skills_view, name='edit_skills'),
     path('services/', views.services_view, name='services'),
+    path('services/edit/<int:service_id>/', views.edit_services_view, name='edit_services'),
     path('portfolio/', views.portfolio_view, name='portfolio'),
     path('portfolio/edit/<int:portfolio_id>/', views.edit_portfolio_view, name='edit_portfolio'),
     path('qualifications/', views.qualifications_view, name='qualifications'),

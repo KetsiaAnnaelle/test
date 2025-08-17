@@ -124,6 +124,33 @@
   </main>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.12/dist/sweetalert2.all.min.js"></script>
   <script>
+    // Check if we're in edit mode
+    const isEditMode = {{ is_edit|yesno:"true,false" }};
+    const itemId = {{ item_id|default:"null" }};
+    
+    // Load existing data if in edit mode
+    if (isEditMode && itemId) {
+      loadSkillData(itemId);
+    }
+    
+    async function loadSkillData(id) {
+      try {
+        const response = await fetch(`{{ base_url }}/api/skills/edit/${id}/`);
+        const result = await response.json();
+        if (result.success && result.data) {
+          const data = result.data;
+          
+          // Pre-fill form fields
+          document.querySelector('input[name="skill"]').value = data.skill || '';
+          document.querySelector('select[name="level"]').value = data.level || '';
+          document.querySelector('input[name="years_experience"]').value = data.years_experience || '';
+          document.querySelector('textarea[name="description"]').value = data.description || '';
+        }
+      } catch (err) {
+        console.error('Failed to load skill data:', err);
+      }
+    }
+
     document.getElementById('skillsForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       // Clear all per-field errors

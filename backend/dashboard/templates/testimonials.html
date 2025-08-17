@@ -82,18 +82,43 @@
   </aside>
   <main class="dashboard-main">
     <div class="dashboard-card">
-      <div class="dashboard-title">Témoignages</div>
-      <div class="dashboard-desc">Ajoutez ou modifiez les témoignages de vos clients pour les afficher sur votre site public.</div>
+      <div class="dashboard-title">{% if is_edit %}Modifier le témoignage{% else %}Témoignages{% endif %}</div>
+      <div class="dashboard-desc">{% if is_edit %}Modifiez les informations de ce témoignage.{% else %}Ajoutez ou modifiez les témoignages de vos clients pour les afficher sur votre site public.{% endif %}</div>
       <form id="testimonialsForm">
         <input type="text" name="author" placeholder="Auteur" required>
         <textarea name="testimonial" placeholder="Témoignage" required></textarea>
-      <button type="submit">Ajouter</button>
+      <button type="submit">{% if is_edit %}Modifier{% else %}Ajouter{% endif %}</button>
         <div id="form-status"></div>
     </form>
     </div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.12/dist/sweetalert2.all.min.js"></script>
   <script>
+    // Check if we're in edit mode
+    const isEditMode = {{ is_edit|yesno:"true,false" }};
+    const itemId = {{ item_id|default:"null" }};
+    
+    // Load existing data if in edit mode
+    if (isEditMode && itemId) {
+      loadTestimonialData(itemId);
+    }
+    
+    async function loadTestimonialData(id) {
+      try {
+        const response = await fetch(`{{ base_url }}/api/testimonials/edit/${id}/`);
+        const result = await response.json();
+        if (result.success && result.data) {
+          const data = result.data;
+          
+          // Pre-fill form fields
+          document.querySelector('input[name="author"]').value = data.author || '';
+          document.querySelector('textarea[name="testimonial"]').value = data.testimonial || '';
+        }
+      } catch (err) {
+        console.error('Failed to load testimonial data:', err);
+      }
+    }
+
     document.getElementById('testimonialsForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       const form = e.target;
@@ -116,19 +141,69 @@
       const statusDiv = document.getElementById('form-status');
       statusDiv.innerHTML = '';
       try {
-        const response = await fetch('{{ base_url }}/api/testimonials/', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await response.json();
-        if (data.success) {
-          await Swal.fire({
-            icon: 'success',
-            title: 'Témoignage ajouté !',
-            confirmButtonText: 'OK',
+        let url = '{{ base_url }}/api/testimonials/';
+        let method = 'POST';
+        
+        if (isEditMode && itemId) {
+          url = `{{ base_url }}/api/testimonials/edit/${itemId}/`;
+          method = 'PUT';
+          
+          // Convert FormData to JSON for PUT request
+          const jsonData = {};
+          for (let [key, value] of formData.entries()) {
+            jsonData[key] = value;
+          }
+          
+          const response = await fetch(url, {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(jsonData),
           });
-          statusDiv.innerHTML = '<span style="color:green;">Témoignage ajouté !</span>';
-          form.reset();
+          
+          const data = await response.json();
+          if (data.success) {
+            await Swal.fire({
+              icon: 'success',
+              title: 'Témoignage modifié !',
+              confirmButtonText: 'OK',
+            });
+            statusDiv.innerHTML = '<span style="color:green;">Témoignage modifié !</span>';
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 1500);
+          } else if (data.errors) {
+            let errorList = '<ul class="form-error-list">';
+            for (const [field, errors] of Object.entries(data.errors)) {
+              errors.forEach(error => {
+                errorList += `<li><strong>${field}:</strong> ${error}</li>`;
+              });
+            }
+            errorList += '</ul>';
+            statusDiv.innerHTML = errorList;
+            Swal.fire({
+              icon: 'error',
+              title: 'Erreur',
+              html: errorList,
+              confirmButtonText: 'OK',
+            });
+          }
+        } else {
+          // Original POST logic for creating new testimonial
+          const response = await fetch(url, {
+            method: method,
+            body: formData,
+          });
+          const data = await response.json();
+          if (data.success) {
+            await Swal.fire({
+              icon: 'success',
+              title: 'Témoignage ajouté !',
+              confirmButtonText: 'OK',
+            });
+            statusDiv.innerHTML = '<span style="color:green;">Témoignage ajouté !</span>';
+            form.reset();
         } else if (data.errors) {
           let errorList = '<ul class="form-error-list">';
           for (const [field, errors] of Object.entries(data.errors)) {

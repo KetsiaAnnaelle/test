@@ -159,13 +159,46 @@
           <div class="input-error" id="error-cv"></div>
         </div>
 
-        <button type="submit">Enregistrer</button>
+        <button type="submit">{% if is_edit %}Modifier{% else %}Enregistrer{% endif %}</button>
         <div id="form-status"></div>
       </form>
     </div>
   </main>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.7.12/dist/sweetalert2.all.min.js"></script>
   <script>
+    // Check if we're in edit mode
+    const isEditMode = {{ is_edit|yesno:"true,false" }};
+    const itemId = {{ item_id|default:"null" }};
+    
+    // Load existing data if in edit mode
+    if (isEditMode && itemId) {
+      loadAboutData(itemId);
+    }
+    
+    async function loadAboutData(id) {
+      try {
+        const response = await fetch(`{{ base_url }}/api/about/edit/${id}/`);
+        const result = await response.json();
+        if (result.success && result.data) {
+          const data = result.data;
+          
+          // Pre-fill form fields
+          document.querySelector('input[name="first_name"]').value = data.first_name || '';
+          document.querySelector('input[name="last_name"]').value = data.last_name || '';
+          document.querySelector('input[name="profession"]').value = data.profession || '';
+          document.querySelector('input[name="company_name"]').value = data.company_name || '';
+          document.querySelector('input[name="years_experience"]').value = data.years_experience || '';
+          document.querySelector('input[name="completed_projects"]').value = data.completed_projects || '';
+          document.querySelector('input[name="email"]').value = data.email || '';
+          document.querySelector('input[name="phone"]').value = data.phone || '';
+          document.querySelector('textarea[name="address"]').value = data.address || '';
+          document.querySelector('textarea[name="bio"]').value = data.bio || '';
+        }
+      } catch (err) {
+        console.error('Failed to load about data:', err);
+      }
+    }
+
     document.getElementById('aboutForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       
@@ -260,20 +293,69 @@
       statusDiv.innerHTML = '';
 
       try {
-        const response = await fetch('{{ base_url }}/api/about/', {
-          method: 'POST',
-          body: formData,
-        });
-        const data = await response.json();
+        let url = '{{ base_url }}/api/about/';
+        let method = 'POST';
         
-        if (data.success) {
-          await Swal.fire({
-            icon: 'success',
-            title: 'Profil mis à jour !',
-            confirmButtonText: 'OK',
+        if (isEditMode && itemId) {
+          url = `{{ base_url }}/api/about/edit/${itemId}/`;
+          method = 'PUT';
+          
+          // For PUT requests with files, we need to use FormData
+          const response = await fetch(url, {
+            method: method,
+            body: formData,
           });
-          statusDiv.innerHTML = '<span style="color:green;">Profil mis à jour !</span>';
-          form.reset();
+          
+          const data = await response.json();
+          if (data.success) {
+            await Swal.fire({
+              icon: 'success',
+              title: 'Profil modifié !',
+              confirmButtonText: 'OK',
+            });
+            statusDiv.innerHTML = '<span style="color:green;">Profil modifié !</span>';
+            setTimeout(() => {
+              window.location.href = '/dashboard';
+            }, 1500);
+          } else if (data.errors) {
+            // Show server-side errors under each field if possible
+            for (const [field, errors] of Object.entries(data.errors)) {
+              const errorDiv = document.getElementById('error-' + field);
+              if (errorDiv) {
+                errorDiv.textContent = errors.join(', ');
+              }
+            }
+            // Also show SweetAlert for global/server errors
+            let errorList = '<ul class="form-error-list">';
+            for (const [field, errors] of Object.entries(data.errors)) {
+              errors.forEach(error => {
+                errorList += `<li><strong>${field}:</strong> ${error}</li>`;
+              });
+            }
+            errorList += '</ul>';
+            statusDiv.innerHTML = errorList;
+            Swal.fire({
+              icon: 'error',
+              title: 'Erreur',
+              html: errorList,
+              confirmButtonText: 'OK',
+            });
+          }
+        } else {
+          // Original POST logic for creating new about
+          const response = await fetch(url, {
+            method: method,
+            body: formData,
+          });
+          const data = await response.json();
+          if (data.success) {
+            await Swal.fire({
+              icon: 'success',
+              title: 'Profil mis à jour !',
+              confirmButtonText: 'OK',
+            });
+            statusDiv.innerHTML = '<span style="color:green;">Profil mis à jour !</span>';
+            form.reset();
         } else if (data.errors) {
           // Show server-side errors under each field if possible
           for (const [field, errors] of Object.entries(data.errors)) {
