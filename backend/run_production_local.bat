@@ -9,3 +9,6 @@ echo.
 echo Starting server...
 python manage.py runserver --settings=backend.settings_local_production
 pause
+
+
+

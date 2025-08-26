@@ -1,3 +1,1 @@
-# Local Production Testing Environment
-SECRET_KEY=django-insecure-iw1xcrpq5&ok=fcic9g6c)*06i=r)uhz47liil24tg!ku-@!d)
-DEBUG=False
+
