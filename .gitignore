@@ -17,3 +17,9 @@ db.sqlite3
 
 __pycache__/
 *.pyc
+
+backend/__pycache__/
+backend/**/*.py[cod]
+
+# Or just use this to ignore all __pycache__ folders recursively
+backend/**/__pycache__/
