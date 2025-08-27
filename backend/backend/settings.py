@@ -120,6 +120,7 @@ CSRF_TRUSTED_ORIGINS = [
     "http://localhost:5503",
     "https://elketsy.pythonanywhere.com",
     "http://elketsy.pythonanywhere.com",
+    "https://portfolio-darh.onrender.com"
 ]
 
 CORS_ALLOWED_ORIGINS = [
@@ -133,6 +134,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5503",
     "https://elketsy.pythonanywhere.com",
     "http://elketsy.pythonanywhere.com",
+    "https://portfolio-darh.onrender.com"
 ]
 
 
